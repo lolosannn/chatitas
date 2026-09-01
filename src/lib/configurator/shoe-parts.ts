@@ -94,6 +94,11 @@ export function materialNameForPart(partId: string): string {
   return `mat_${partId}`;
 }
 
+/** Inversa de materialNameForPart — null si el nombre no sigue la convención. */
+export function partIdFromMaterialName(materialName: string): string | null {
+  return materialName.startsWith("mat_") ? materialName.slice(4) : null;
+}
+
 export function getShoePart(partId: string): ShoePartDefinition | undefined {
   return SHOE_PARTS.find((part) => part.id === partId);
 }

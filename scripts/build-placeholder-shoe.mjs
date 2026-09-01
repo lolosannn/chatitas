@@ -30,6 +30,11 @@ root.name = 'Shoe';
 
 function makeMesh(name, geometry, color, { metalness = 0.05, roughness = 0.85, material: sharedMaterial } = {}) {
   const material = sharedMaterial ?? new THREE.MeshStandardMaterial({ color, metalness, roughness });
+  if (!sharedMaterial) {
+    // Sin material compartido, `name` es el part_id de la parte (ver
+    // shoe-parts.ts) — la convención mat_<part_id> depende de esto.
+    material.name = `mat_${name}`;
+  }
   const mesh = new THREE.Mesh(geometry, material);
   mesh.name = name;
   mesh.castShadow = true;
