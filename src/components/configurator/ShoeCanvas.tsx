@@ -234,7 +234,7 @@ function CaptureController() {
 export function ShoeCanvas() {
   return (
     <Canvas
-      camera={{ position: [0.6, 0.4, 0.9], fov: 35 }}
+      camera={{ position: [0.28, 0.2, 0.4], fov: 35 }}
       shadows
       gl={{ preserveDrawingBuffer: true }}
       onPointerMissed={() => useConfiguratorStore.getState().selectPart(null)}
@@ -252,7 +252,7 @@ export function ShoeCanvas() {
       />
       <directionalLight position={[-1, 0.5, -1]} intensity={0.5} />
       <hemisphereLight args={["#ffffff", "#444444", 0.6]} />
-      <OrbitControls enablePan={false} minDistance={0.4} maxDistance={2} />
+      <OrbitControls enablePan={false} minDistance={0.15} maxDistance={0.8} />
     </Canvas>
   );
 }

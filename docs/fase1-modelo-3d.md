@@ -18,12 +18,26 @@ modelo real: solo necesita que el archivo respete esta convención.
 Como el modelo definitivo todavía no existe, se generó un placeholder
 programático (`scripts/build-placeholder-shoe.mjs` → exporta
 `public/models/shoe-placeholder.glb`) con la topología mínima para probar
-toda la arquitectura: 10 partes configurables, materiales por nombre, y UVs
-básicos. **No es representativo de la estética final** — es un boceto en
-volúmenes simples para validar el pipeline (carga → detección de partes →
-cambio de color/textura → export). Cuando llegue el modelo real del
-modelador, se reemplaza el archivo y el resto de la app sigue funcionando
-igual, siempre que respete la misma convención.
+toda la arquitectura: 8 partes configurables, materiales por nombre, y UVs
+básicos. **No es representativo de la estética final** — es un boceto para
+validar el pipeline (carga → detección de partes → cambio de
+color/textura → export), aunque a partir de la segunda versión (chata/
+ballerina, ver más abajo) ya tiene una silueta reconocible como zapato, no
+solo volúmenes genéricos. Cuando llegue el modelo real del modelador, se
+reemplaza el archivo y el resto de la app sigue funcionando igual, siempre
+que respete la misma convención.
+
+**Actualización — pivot a chata/ballerina:** la primera versión del
+placeholder era una zapatilla deportiva genérica (cordones, lengüeta,
+suela con entresuela) armada con cápsulas y cilindros simples — leía como
+un "blob", no como un zapato. Se rehizo por completo con un perfil de
+horma real (contorno de pie: talón angosto, ancho en el metatarso, punta
+redondeada) y se cambió el tipo de calzado a **chata/ballerina** (más
+simple de modelar bien de forma procedural, y el tipo de calzado que
+importa mostrar primero). La tabla de partes de abajo y
+`src/lib/configurator/shoe-parts.ts` reflejan esta segunda versión —
+cordones/ojales/lengüeta ya no existen como partes, se reemplazaron por
+Ribete, Pulsera y Aplique.
 
 Como referencia visual (no versionada en el repo por peso) se evaluó el
 modelo público [`MaterialsVariantsShoe`](https://github.com/KhronosGroup/glTF-Sample-Assets/tree/main/Models/MaterialsVariantsShoe)
@@ -57,18 +71,16 @@ llamarse como el modelador prefiera); lo que el código lee es el nombre del
 Definida en código en `src/lib/configurator/shoe-parts.ts` (fuente de
 verdad — esta tabla es solo para referencia rápida):
 
-| `part_id`             | Nombre visible          | Categoría | Color | Imagen | Material físico |
-|------------------------|--------------------------|-----------|:-----:|:------:|:----------------:|
-| `sole_outsole`          | Suela exterior           | sole      | ✅    | ❌     | ✅               |
-| `sole_midsole`          | Entresuela                | sole      | ✅    | ❌     | ❌               |
-| `sole_tread`            | Piso de contacto          | sole      | ✅    | ❌     | ❌               |
-| `upper_body`            | Cuerpo / capellada        | upper     | ✅    | ✅     | ✅               |
-| `upper_toe_cap`         | Puntera                   | upper     | ✅    | ✅     | ✅               |
-| `upper_heel_counter`    | Talonera                  | upper     | ✅    | ✅     | ✅               |
-| `tongue`                | Lengüeta                  | upper     | ✅    | ✅     | ✅               |
-| `laces`                 | Cordones                  | laces     | ✅    | ❌     | ❌               |
-| `eyelets`               | Ojales                    | accent    | ✅    | ❌     | ❌               |
-| `upper_logo_patch`      | Parche / logo lateral     | accent    | ✅    | ✅     | ❌               |
+| `part_id`             | Nombre visible | Categoría | Color | Imagen | Material físico |
+|------------------------|----------------|-----------|:-----:|:------:|:----------------:|
+| `sole_outsole`          | Suela          | sole      | ✅    | ❌     | ✅               |
+| `heel_taco`             | Taco           | sole      | ✅    | ❌     | ❌               |
+| `upper_body`            | Cuerpo         | upper     | ✅    | ✅     | ✅               |
+| `upper_toe_cap`         | Puntera        | upper     | ✅    | ✅     | ✅               |
+| `upper_heel_counter`    | Talonera       | upper     | ✅    | ✅     | ✅               |
+| `trim`                  | Ribete         | accent    | ✅    | ❌     | ❌               |
+| `strap`                 | Pulsera        | accent    | ✅    | ❌     | ✅               |
+| `applique`              | Aplique        | accent    | ✅    | ✅     | ❌               |
 
 Si el modelo definitivo necesita partes nuevas (ej. `laterals`, `heel_tab`,
 `lining`), se agregan a esta tabla y a `shoe-parts.ts` — no requiere cambios
@@ -109,11 +121,15 @@ Para que el archivo definitivo funcione sin cambios de código:
 
 - `scripts/inspect-model.mjs`: inspecciona nodos, mallas, materiales y UVs
   de cualquier `.glb` (usa `@gltf-transform/core`). Se usó para verificar
-  que el placeholder expone 10 materiales (uno por parte) sobre 24 mallas.
-- Página de QA visual: `src/app/model-preview/page.tsx` — carga el
-  placeholder en un `<Canvas>` de React Three Fiber con luces básicas, sin
-  interacción (la interacción real es Fase 3), solo para confirmar
-  visualmente que el archivo carga y los materiales responden a la luz.
+  que el placeholder expone 8 materiales (uno por parte), y en la Fase 3
+  se detectó con esta misma herramienta que la primera versión tenía 8 de
+  10 materiales sin `.name` — el visor solo reconocía las 2 partes que
+  compartían material explícitamente asignado.
+- QA visual con capturas reales del visor (`scripts/screenshot-model-preview.mjs`,
+  vía Playwright) desde varios ángulos (3/4, cenital, perfil) — el perfil
+  lateral fue clave para detectar que el borde superior del cuerpo salía
+  como una rampa triangular en vez de una curva (función de altura con un
+  "codo" en el pico, sin continuidad de derivada entre sus dos mitades).
 
 ## Próximo paso (Fase 2)
 

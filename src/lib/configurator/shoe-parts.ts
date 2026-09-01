@@ -1,17 +1,17 @@
 /**
- * Definición canónica de las partes configurables del zapato.
+ * Definición canónica de las partes configurables del zapato (chata/ballerina).
  *
  * Convención del modelo 3D: cada parte configurable corresponde a UN material
  * compartido, nombrado `mat_<id>`, aplicado a uno o más meshes del glTF. No
- * importa cuántos nodos/mallas formen la parte (ej. "laces" son 8 mallas
- * distintas) — todas comparten la misma instancia de material, así que
- * pintar/texturizar la parte es una sola actualización de material.
+ * importa cuántos nodos/mallas formen la parte — todas comparten la misma
+ * instancia de material, así que pintar/texturizar la parte es una sola
+ * actualización de material.
  *
  * Esta misma convención es la que debe respetar el modelo definitivo que
  * haga el modelador 3D (ver docs/fase1-modelo-3d.md).
  */
 
-export type ShoePartCategory = "sole" | "upper" | "laces" | "accent";
+export type ShoePartCategory = "sole" | "upper" | "accent";
 
 export interface ShoePartDefinition {
   /** Coincide con el sufijo del material en el glTF: `mat_<id>`. */
@@ -30,25 +30,19 @@ export interface ShoePartDefinition {
 export const SHOE_PARTS: ShoePartDefinition[] = [
   {
     id: "sole_outsole",
-    label: "Suela exterior",
+    label: "Suela",
     category: "sole",
     supports: { color: true, image: false, material: true },
   },
   {
-    id: "sole_midsole",
-    label: "Entresuela",
-    category: "sole",
-    supports: { color: true, image: false, material: false },
-  },
-  {
-    id: "sole_tread",
-    label: "Piso de contacto",
+    id: "heel_taco",
+    label: "Taco",
     category: "sole",
     supports: { color: true, image: false, material: false },
   },
   {
     id: "upper_body",
-    label: "Cuerpo / capellada",
+    label: "Cuerpo",
     category: "upper",
     supports: { color: true, image: true, material: true },
   },
@@ -65,26 +59,20 @@ export const SHOE_PARTS: ShoePartDefinition[] = [
     supports: { color: true, image: true, material: true },
   },
   {
-    id: "tongue",
-    label: "Lengüeta",
-    category: "upper",
-    supports: { color: true, image: true, material: true },
-  },
-  {
-    id: "laces",
-    label: "Cordones",
-    category: "laces",
-    supports: { color: true, image: false, material: false },
-  },
-  {
-    id: "eyelets",
-    label: "Ojales",
+    id: "trim",
+    label: "Ribete",
     category: "accent",
     supports: { color: true, image: false, material: false },
   },
   {
-    id: "upper_logo_patch",
-    label: "Parche / logo lateral",
+    id: "strap",
+    label: "Pulsera",
+    category: "accent",
+    supports: { color: true, image: false, material: true },
+  },
+  {
+    id: "applique",
+    label: "Aplique",
     category: "accent",
     supports: { color: true, image: true, material: false },
   },

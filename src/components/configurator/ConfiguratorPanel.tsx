@@ -15,13 +15,12 @@ import { buildOrderSummary } from "@/lib/configurator/order-summary";
 import { downloadBlob } from "@/lib/download-blob";
 
 const CATEGORY_LABELS: Record<ShoePartCategory, string> = {
-  sole: "Suela",
   upper: "Cuerpo",
-  laces: "Cordones",
   accent: "Detalles",
+  sole: "Suela",
 };
 
-const CATEGORY_ORDER: ShoePartCategory[] = ["upper", "laces", "accent", "sole"];
+const CATEGORY_ORDER: ShoePartCategory[] = ["upper", "accent", "sole"];
 
 export function ConfiguratorPanel() {
   const resetAll = useConfiguratorStore((s) => s.resetAll);

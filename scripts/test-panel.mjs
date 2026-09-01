@@ -19,8 +19,8 @@ fs.writeFileSync(testImagePath, Buffer.from(TEST_IMAGE_BASE64, "base64"));
 await page.goto("http://localhost:3000/", { waitUntil: "networkidle" });
 await page.waitForTimeout(1200);
 
-// Seleccionar y personalizar el cuerpo/capellada
-await page.getByText("Cuerpo / capellada", { exact: true }).click();
+// Seleccionar y personalizar el cuerpo
+await page.getByRole("button", { name: "Cuerpo" }).click();
 await page.waitForTimeout(400);
 await page.getByTitle("Rojo").click();
 await page.waitForTimeout(400);
@@ -28,8 +28,8 @@ await page.getByText("Gamuza", { exact: true }).click();
 await page.waitForTimeout(400);
 await page.screenshot({ path: `${outDir}/panel-color-material.png` });
 
-// Cambiar al parche/logo lateral y subir una imagen
-await page.getByText("Parche / logo lateral", { exact: true }).click();
+// Cambiar a la puntera y subir una imagen
+await page.getByText("Puntera", { exact: true }).click();
 await page.waitForTimeout(400);
 await page.locator('input[type="file"]').setInputFiles(testImagePath);
 await page.waitForTimeout(600);
