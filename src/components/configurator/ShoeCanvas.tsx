@@ -11,13 +11,14 @@
 
 import { Suspense, useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
-import { Canvas, type ThreeEvent } from "@react-three/fiber";
+import { Canvas, useThree, type ThreeEvent } from "@react-three/fiber";
 import { OrbitControls, useGLTF } from "@react-three/drei";
 import { EffectComposer, Outline } from "@react-three/postprocessing";
 import { assetPath } from "@/lib/asset-path";
 import { partIdFromMaterialName, getShoePart } from "@/lib/configurator/shoe-parts";
 import { getMaterialVariant } from "@/lib/configurator/material-variants";
 import { useConfiguratorStore, type PartsSelectionState } from "@/lib/configurator/store";
+import { captureControllerRef } from "@/lib/configurator/capture";
 
 const SHOE_MODEL_PATH = assetPath("/models/shoe-placeholder.glb");
 const textureLoader = new THREE.TextureLoader();
@@ -186,16 +187,62 @@ function ShoeModel() {
   );
 }
 
+/**
+ * Registra en captureControllerRef una función que renderiza un frame a
+ * mayor resolución (subiendo el pixelRatio del renderer un instante) y lo
+ * exporta como PNG — así el botón "Descargar captura" del panel (Fase 5),
+ * que vive fuera del árbol de R3F, puede pedir una captura en alta
+ * resolución sin acoplar el panel al renderer.
+ */
+function CaptureController() {
+  const { gl, scene, camera } = useThree();
+
+  useEffect(() => {
+    captureControllerRef.current = {
+      captureHighRes: (pixelRatio = 3) =>
+        new Promise<Blob>((resolve, reject) => {
+          const prevPixelRatio = gl.getPixelRatio();
+          const prevSize = gl.getSize(new THREE.Vector2());
+          // No superar ~4096px de lado para no reventar memoria/GPU en equipos modestos.
+          const safeRatio = Math.max(
+            1,
+            Math.min(pixelRatio, 4096 / prevSize.x, 4096 / prevSize.y)
+          );
+
+          gl.setPixelRatio(safeRatio);
+          gl.setSize(prevSize.x, prevSize.y, false);
+          gl.render(scene, camera);
+
+          gl.domElement.toBlob((blob) => {
+            gl.setPixelRatio(prevPixelRatio);
+            gl.setSize(prevSize.x, prevSize.y, false);
+            gl.render(scene, camera);
+
+            if (blob) resolve(blob);
+            else reject(new Error("No se pudo generar la captura"));
+          }, "image/png");
+        }),
+    };
+    return () => {
+      captureControllerRef.current = null;
+    };
+  }, [gl, scene, camera]);
+
+  return null;
+}
+
 export function ShoeCanvas() {
   return (
     <Canvas
       camera={{ position: [0.6, 0.4, 0.9], fov: 35 }}
       shadows
+      gl={{ preserveDrawingBuffer: true }}
       onPointerMissed={() => useConfiguratorStore.getState().selectPart(null)}
     >
       <Suspense fallback={null}>
         <ShoeModel />
       </Suspense>
+      <CaptureController />
       <ambientLight intensity={0.7} />
       <directionalLight
         position={[1, 1.5, 1]}

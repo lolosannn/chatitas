@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import {
   SHOE_PARTS,
   type ShoePartCategory,
@@ -10,6 +10,9 @@ import { COLOR_PALETTE } from "@/lib/configurator/color-palette";
 import { MATERIAL_VARIANTS } from "@/lib/configurator/material-variants";
 import { useConfiguratorStore } from "@/lib/configurator/store";
 import { readFileAsDataUrl } from "@/lib/read-file-as-data-url";
+import { captureControllerRef } from "@/lib/configurator/capture";
+import { buildOrderSummary } from "@/lib/configurator/order-summary";
+import { downloadBlob } from "@/lib/download-blob";
 
 const CATEGORY_LABELS: Record<ShoePartCategory, string> = {
   sole: "Suela",
@@ -46,6 +49,7 @@ export function ConfiguratorPanel() {
           </section>
         ))}
       </div>
+      <ExportControls />
       <div className="border-t border-neutral-800 p-3">
         <button
           type="button"
@@ -56,6 +60,52 @@ export function ConfiguratorPanel() {
         </button>
       </div>
     </aside>
+  );
+}
+
+function ExportControls() {
+  const [isCapturing, setIsCapturing] = useState(false);
+
+  const handleDownloadCapture = async () => {
+    const controller = captureControllerRef.current;
+    if (!controller || isCapturing) return;
+    setIsCapturing(true);
+    try {
+      const blob = await controller.captureHighRes(3);
+      downloadBlob(blob, `zapato-personalizado-${Date.now()}.png`);
+    } catch (error) {
+      console.error("No se pudo generar la captura", error);
+    } finally {
+      setIsCapturing(false);
+    }
+  };
+
+  const handleDownloadSummary = () => {
+    const summary = buildOrderSummary(useConfiguratorStore.getState().parts);
+    const blob = new Blob([JSON.stringify(summary, null, 2)], {
+      type: "application/json",
+    });
+    downloadBlob(blob, `pedido-zapato-${Date.now()}.json`);
+  };
+
+  return (
+    <div className="flex flex-col gap-2 border-t border-neutral-800 p-3">
+      <button
+        type="button"
+        onClick={handleDownloadCapture}
+        disabled={isCapturing}
+        className="w-full rounded-md bg-sky-600 px-3 py-2 text-sm font-medium text-white hover:bg-sky-500 disabled:cursor-not-allowed disabled:opacity-60"
+      >
+        {isCapturing ? "Generando captura…" : "Descargar captura (PNG)"}
+      </button>
+      <button
+        type="button"
+        onClick={handleDownloadSummary}
+        className="w-full rounded-md border border-neutral-700 px-3 py-2 text-sm text-neutral-300 hover:bg-neutral-800"
+      >
+        Descargar resumen del pedido (JSON)
+      </button>
+    </div>
   );
 }
 
