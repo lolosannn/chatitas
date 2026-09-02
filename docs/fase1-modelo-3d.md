@@ -46,6 +46,56 @@ zapatilla real, pero **no** se usa como placeholder funcional porque es un
 solo mesh con variantes de textura completa, no partes separadas por
 material.
 
+**Actualización — modelo generado con IA (v3, el activo hoy):** la silueta
+procedural (v2) seguía sin convencer visualmente por más ajustes de
+geometría — el techo real de "modelado a mano por código" se había
+alcanzado. Se generó un modelo con [Meshy AI](https://www.meshy.ai)
+(imagen→3D de una chata negra, licencia **Privado** — no CC BY, para uso
+comercial propio) y se procesó para integrarlo:
+
+1. El export original (glTF-Binary, "Smart Topology") viene como **un solo
+   mesh, sin materiales ni UVs**, con normales pero sin ningún dato que
+   permita separar partes — el toggle "Dividir" de Meshy no generó
+   materiales/primitivas distintas en el `.glb` exportado.
+2. `scripts/smooth-mesh.mjs` — suavizado Laplaciano (5 iteraciones) para
+   sacar ruido de reconstrucción de la superficie (picos/dentado en zonas
+   de baja confianza del escaneo).
+3. `scripts/simplify-real-model.mjs` — decimación con `@gltf-transform/functions`
+   (`simplify` + `MeshoptSimplifier`) de ~400k a ~30k triángulos, apto para
+   tiempo real en navegador.
+4. `scripts/process-real-model.mjs` — reorienta (el eje más largo pasa a
+   Z), escala a ~0.29 m de largo real, y **separa geométricamente por
+   posición** en 4 partes: `sole_outsole` (franja inferior por altura),
+   y dentro del resto, `upper_heel_counter` / `upper_body` / `upper_toe_cap`
+   por posición a lo largo del eje Z (los extremos son puntera/talonera,
+   el resto cuerpo). Cada grupo se exporta como una primitiva con su propio
+   material `mat_<part_id>`.
+
+**Limitaciones conocidas de este enfoque** (a diferencia de un modelo
+modelado/segmentado a mano):
+
+- Es una separación por **posición**, no por costura real — los bordes
+  entre partes son aproximados (funcionan bien para "pintar la puntera de
+  otro color", no son anatómicamente exactos).
+- **Sin UVs** → no se puede aplicar una imagen subida por el usuario a
+  ninguna parte todavía (`supports.image` en `false` en las 4). Si se
+  regenera el modelo con UVs, se reactiva por parte.
+- No hay partes para Ribete/Pulsera/Aplique/Taco — son detalles de
+  superficie sin región geométrica propia en este mesh; para tenerlos hace
+  falta un modelo con esas piezas ya separadas (por el generador o edición
+  manual en un editor 3D).
+- El mesh original tenía una costura irregular (no watertight) en una
+  primera generación; se resolvió pidiendo una nueva generación con mejores
+  parámetros (Smart Topology en vez de Alto detalle, más resolución de
+  visión), no arreglando la malla — más fácil regenerar bien que reparar.
+
+La vía de mejora es reemplazar este archivo por uno con partes ya separadas
+(el mismo generador permite editar/dividir manualmente, o un modelador 3D
+hace el trabajo final) — en cuanto ese archivo tenga materiales
+`mat_<part_id>` propios y UVs, se reemplaza `public/models/shoe-placeholder.glb`
+y se **agranda de nuevo** la tabla de partes en `shoe-parts.ts`, sin tocar
+el resto del código.
+
 ## Convención de nomenclatura (obligatoria para el modelo definitivo)
 
 ### 1. Un material por zona configurable, compartido entre mallas
@@ -66,24 +116,23 @@ Los nombres de los **nodos/mallas** en sí no importan para la lógica (pueden
 llamarse como el modelador prefiera); lo que el código lee es el nombre del
 **material**.
 
-### 2. Tabla de partes configurables (v1)
+### 2. Tabla de partes configurables (actual — v3, modelo real segmentado)
 
 Definida en código en `src/lib/configurator/shoe-parts.ts` (fuente de
 verdad — esta tabla es solo para referencia rápida):
 
 | `part_id`             | Nombre visible | Categoría | Color | Imagen | Material físico |
 |------------------------|----------------|-----------|:-----:|:------:|:----------------:|
+| `upper_body`            | Cuerpo         | upper     | ✅    | ❌     | ✅               |
+| `upper_toe_cap`         | Puntera        | upper     | ✅    | ❌     | ✅               |
+| `upper_heel_counter`    | Talonera       | upper     | ✅    | ❌     | ✅               |
 | `sole_outsole`          | Suela          | sole      | ✅    | ❌     | ✅               |
-| `heel_taco`             | Taco           | sole      | ✅    | ❌     | ❌               |
-| `upper_body`            | Cuerpo         | upper     | ✅    | ✅     | ✅               |
-| `upper_toe_cap`         | Puntera        | upper     | ✅    | ✅     | ✅               |
-| `upper_heel_counter`    | Talonera       | upper     | ✅    | ✅     | ✅               |
-| `trim`                  | Ribete         | accent    | ✅    | ❌     | ❌               |
-| `strap`                 | Pulsera        | accent    | ✅    | ❌     | ✅               |
-| `applique`              | Aplique        | accent    | ✅    | ✅     | ❌               |
 
-Si el modelo definitivo necesita partes nuevas (ej. `laterals`, `heel_tab`,
-`lining`), se agregan a esta tabla y a `shoe-parts.ts` — no requiere cambios
+`image` está en `false` en las cuatro porque el modelo activo no trae UVs
+(ver más abajo) — se reactiva parte por parte apenas el modelo lo soporte.
+Si el modelo definitivo necesita partes nuevas (ej. `trim`, `strap`,
+`applique`, `heel_taco` — existieron en la v2 procedural, ver historial más
+abajo), se agregan a esta tabla y a `shoe-parts.ts` — no requiere cambios
 en el visor ni en el estado, ambos iteran la lista dinámicamente (Fase 2/3).
 
 ### 3. Requisitos de UV
@@ -130,6 +179,13 @@ Para que el archivo definitivo funcione sin cambios de código:
   lateral fue clave para detectar que el borde superior del cuerpo salía
   como una rampa triangular en vez de una curva (función de altura con un
   "codo" en el pico, sin continuidad de derivada entre sus dos mitades).
+- Para el modelo real (v3): se verificó con la misma técnica de bordes
+  abiertos (`findBoundaryLoops` en `process-real-model.mjs`, cuenta edges
+  compartidos por un solo triángulo) que la malla es watertight (0 bordes
+  abiertos) antes de aceptarla. Y se probó la segmentación por posición
+  clickeando cada zona en el visor real y aplicando un color distinto por
+  parte (`scripts/test-real-model-parts.mjs`) para confirmar que "Puntera"
+  cae del lado correcto (el extremo más ancho/redondeado, no el angosto).
 
 ## Próximo paso (Fase 2)
 

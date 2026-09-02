@@ -2,16 +2,22 @@
  * Definición canónica de las partes configurables del zapato (chata/ballerina).
  *
  * Convención del modelo 3D: cada parte configurable corresponde a UN material
- * compartido, nombrado `mat_<id>`, aplicado a uno o más meshes del glTF. No
- * importa cuántos nodos/mallas formen la parte — todas comparten la misma
+ * compartido, nombrado `mat_<id>`, aplicado a uno o más meshes/primitivas del
+ * glTF. No importa cuántas formen la parte — todas comparten la misma
  * instancia de material, así que pintar/texturizar la parte es una sola
  * actualización de material.
  *
  * Esta misma convención es la que debe respetar el modelo definitivo que
  * haga el modelador 3D (ver docs/fase1-modelo-3d.md).
+ *
+ * Estado actual: el modelo activo (generado con IA + segmentado por
+ * geometría, ver docs/fase1-modelo-3d.md) solo distingue 4 partes reales
+ * (suela + 3 zonas del cuerpo por posición) y no trae UVs, así que por
+ * ahora `image` está deshabilitado en todas — subir una imagen no tendría
+ * dónde mapearse correctamente. Se reactiva cuando el modelo tenga UVs.
  */
 
-export type ShoePartCategory = "sole" | "upper" | "accent";
+export type ShoePartCategory = "sole" | "upper";
 
 export interface ShoePartDefinition {
   /** Coincide con el sufijo del material en el glTF: `mat_<id>`. */
@@ -29,52 +35,28 @@ export interface ShoePartDefinition {
 
 export const SHOE_PARTS: ShoePartDefinition[] = [
   {
-    id: "sole_outsole",
-    label: "Suela",
-    category: "sole",
-    supports: { color: true, image: false, material: true },
-  },
-  {
-    id: "heel_taco",
-    label: "Taco",
-    category: "sole",
-    supports: { color: true, image: false, material: false },
-  },
-  {
     id: "upper_body",
     label: "Cuerpo",
     category: "upper",
-    supports: { color: true, image: true, material: true },
+    supports: { color: true, image: false, material: true },
   },
   {
     id: "upper_toe_cap",
     label: "Puntera",
     category: "upper",
-    supports: { color: true, image: true, material: true },
+    supports: { color: true, image: false, material: true },
   },
   {
     id: "upper_heel_counter",
     label: "Talonera",
     category: "upper",
-    supports: { color: true, image: true, material: true },
-  },
-  {
-    id: "trim",
-    label: "Ribete",
-    category: "accent",
-    supports: { color: true, image: false, material: false },
-  },
-  {
-    id: "strap",
-    label: "Pulsera",
-    category: "accent",
     supports: { color: true, image: false, material: true },
   },
   {
-    id: "applique",
-    label: "Aplique",
-    category: "accent",
-    supports: { color: true, image: true, material: false },
+    id: "sole_outsole",
+    label: "Suela",
+    category: "sole",
+    supports: { color: true, image: false, material: true },
   },
 ];
 

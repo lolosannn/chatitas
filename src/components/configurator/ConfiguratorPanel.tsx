@@ -16,11 +16,10 @@ import { downloadBlob } from "@/lib/download-blob";
 
 const CATEGORY_LABELS: Record<ShoePartCategory, string> = {
   upper: "Cuerpo",
-  accent: "Detalles",
   sole: "Suela",
 };
 
-const CATEGORY_ORDER: ShoePartCategory[] = ["upper", "accent", "sole"];
+const CATEGORY_ORDER: ShoePartCategory[] = ["upper", "sole"];
 
 export function ConfiguratorPanel() {
   const resetAll = useConfiguratorStore((s) => s.resetAll);
@@ -35,18 +34,22 @@ export function ConfiguratorPanel() {
         </p>
       </div>
       <div className="flex-1 overflow-y-auto p-3">
-        {CATEGORY_ORDER.map((category) => (
-          <section key={category} className="mb-4">
-            <h2 className="mb-1 px-1 text-xs font-semibold uppercase tracking-wide text-neutral-500">
-              {CATEGORY_LABELS[category]}
-            </h2>
-            <div className="flex flex-col gap-1">
-              {SHOE_PARTS.filter((part) => part.category === category).map((part) => (
-                <PartRow key={part.id} part={part} />
-              ))}
-            </div>
-          </section>
-        ))}
+        {CATEGORY_ORDER.map((category) => {
+          const parts = SHOE_PARTS.filter((part) => part.category === category);
+          if (parts.length === 0) return null;
+          return (
+            <section key={category} className="mb-4">
+              <h2 className="mb-1 px-1 text-xs font-semibold uppercase tracking-wide text-neutral-500">
+                {CATEGORY_LABELS[category]}
+              </h2>
+              <div className="flex flex-col gap-1">
+                {parts.map((part) => (
+                  <PartRow key={part.id} part={part} />
+                ))}
+              </div>
+            </section>
+          );
+        })}
       </div>
       <ExportControls />
       <div className="border-t border-neutral-800 p-3">
