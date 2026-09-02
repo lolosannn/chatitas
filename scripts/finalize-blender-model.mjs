@@ -1,7 +1,7 @@
-// Integra el modelo editado a mano en Blender: descarta las mallas
-// sobrantes (líneas de contorno duplicadas, fragmentos sueltos) y les
-// asigna a las mallas reales su material mat_<part_id>, reorienta y
-// escala a metros reales.
+// Integra el modelo editado a mano en Blender: descarta la malla
+// sobrante (fragmento suelto de un recorte rápido) y les asigna a las
+// mallas reales su material mat_<part_id>, reorienta y escala a metros
+// reales.
 import { NodeIO, Accessor } from '@gltf-transform/core';
 import { prune } from '@gltf-transform/functions';
 
@@ -21,8 +21,8 @@ const targetLength = Number(process.argv[4] ?? '0.29');
 
 // índice de malla (orden de root.listNodes()) -> part_id, o null para descartar
 const MESH_TO_PART = {
-  0: null, // líneas de contorno (sobrante)
-  1: null, // fragmento suelto (sobrante)
+  0: 'sole_outsole', // contorno de la suela (visto desde abajo: coincide con la planta del zapato)
+  1: null, // fragmento suelto (sobrante, de un recorte rápido sin terminar)
   2: 'upper_heel_counter',
   3: 'trim',
   4: 'upper_body',
@@ -105,6 +105,7 @@ const colorsByPart = {
   upper_body: [0.95, 0.95, 0.95],
   upper_heel_counter: [0.85, 0.85, 0.85],
   trim: [0.07, 0.07, 0.07],
+  sole_outsole: [0.1, 0.09, 0.08],
 };
 
 let meshIdx = 0;
@@ -125,6 +126,10 @@ for (let i = 0; i < 5; i++) {
       .setBaseColorFactor([...color, 1])
       .setRoughnessFactor(0.6)
       .setMetallicFactor(0.05);
+    // sole_outsole es una tira/borde delgado (no un disco cerrado) — de un
+    // solo lado se vuelve invisible al mirarla desde abajo (backface
+    // culling), justo el ángulo más común para "ver la suela".
+    if (partId === 'sole_outsole') material.setDoubleSided(true);
     prim.setMaterial(material);
   }
 }

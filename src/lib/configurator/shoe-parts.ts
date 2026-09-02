@@ -12,12 +12,12 @@
  *
  * Estado actual (v4): modelo generado con IA y segmentado a mano en
  * Blender (separación real por selección de caras, no una heurística por
- * posición). Trae 3 partes limpias: Cuerpo, Talonera y Ribete — todavía no
- * hay Suela ni Puntera separadas en este corte, ni UVs (por eso `image`
+ * posición). Trae 4 partes limpias: Cuerpo, Talonera, Ribete y Suela —
+ * todavía no hay Puntera separada en este corte, ni UVs (por eso `image`
  * sigue en `false` en todas). Se agrandan apenas el modelo las traiga.
  */
 
-export type ShoePartCategory = "upper" | "accent";
+export type ShoePartCategory = "upper" | "accent" | "sole";
 
 export interface ShoePartDefinition {
   /** Coincide con el sufijo del material en el glTF: `mat_<id>`. */
@@ -50,6 +50,12 @@ export const SHOE_PARTS: ShoePartDefinition[] = [
     id: "trim",
     label: "Ribete",
     category: "accent",
+    supports: { color: true, image: false, material: false },
+  },
+  {
+    id: "sole_outsole",
+    label: "Suela",
+    category: "sole",
     supports: { color: true, image: false, material: false },
   },
 ];

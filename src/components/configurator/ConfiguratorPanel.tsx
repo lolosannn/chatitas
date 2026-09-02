@@ -17,9 +17,10 @@ import { downloadBlob } from "@/lib/download-blob";
 const CATEGORY_LABELS: Record<ShoePartCategory, string> = {
   upper: "Cuerpo",
   accent: "Detalles",
+  sole: "Suela",
 };
 
-const CATEGORY_ORDER: ShoePartCategory[] = ["upper", "accent"];
+const CATEGORY_ORDER: ShoePartCategory[] = ["upper", "accent", "sole"];
 
 export function ConfiguratorPanel() {
   const resetAll = useConfiguratorStore((s) => s.resetAll);

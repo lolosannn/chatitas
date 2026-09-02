@@ -103,18 +103,35 @@ simple vista cuáles eran partes reales y cuáles sobrantes. Se resolvió con
 una técnica de aislamiento: `scripts/isolate-meshes.mjs` exporta cada malla
 del archivo a su propio `.glb` (todos los demás nodos descartados +
 `prune()`), permitiendo renderizar y ver cada una por separado
-(`scripts/test-real-model-parts.mjs` + capturas). Eso reveló que 2 de las 5
-eran basura del proceso de edición (`Mesh_0`: líneas finas de contorno que
-trazan todas las costuras; `Mesh_0.001`: un fragmento suelto sin relación
-con el zapato) y las otras 3 eran partes limpias y bien separadas:
-talonera, ribete (la tira que rodea el escote) y cuerpo principal.
-`scripts/debug-color-parts.mjs` (un color plano distinto por malla) se usó
-como verificación cruzada antes de descartar las 2 sobrantes.
+(`scripts/test-real-model-parts.mjs` + capturas). De las 5, solo
+`Mesh_0.001` era basura real (un fragmento suelto sin relación con el
+zapato, de un recorte rápido sin terminar) — las otras 4 eran partes
+reales: talonera, ribete (la tira que rodea el escote), cuerpo principal, y
+`Mesh_0` — que en el visor por defecto (una sola luz, sin `DoubleSide`)
+renderiza como líneas finas dispersas y **se descartó por error en la
+primera integración**, creyéndola un sobrante de costuras.
 
-`scripts/finalize-blender-model.mjs` integra el resultado: descarta las 2
-mallas sobrantes por índice, reorienta/centra/escala el conjunto a ~0.29 m
+**Corrección — la suela sí estaba ahí:** renderizando `Mesh_0` aislada
+desde abajo (visor three.js standalone con luces por ambos lados, ver
+`scripts/finalize-blender-model.mjs` para el pipeline y el bounding box
+verificado por separado) se ve con claridad que es el contorno de la
+planta del zapato — coincide exactamente con la silueta del resto de las
+partes. No es un disco cerrado sino un borde/tira delgada (el "canto" de
+la suela), así que con material de una sola cara (`DoubleSide: false`,
+default) se vuelve invisible al mirarla de frente o desde abajo por
+backface culling — de ahí que a simple vista pareciera solo líneas sueltas.
+Se corrigió marcando su material como `doubleSided` en
+`finalize-blender-model.mjs` (`material.setDoubleSided(true)`, solo para
+`sole_outsole` — las demás partes son superficies cerradas y no lo
+necesitan). `scripts/debug-color-parts.mjs` (un color plano distinto por
+malla) se usó como verificación cruzada de las 4 partes reales antes de
+descartar la única sobrante.
+
+`scripts/finalize-blender-model.mjs` integra el resultado: descarta la
+malla sobrante por índice, reorienta/centra/escala el conjunto a ~0.29 m
 de largo real, y le asigna a cada malla real su material
-`mat_<part_id>` (`upper_heel_counter`, `trim`, `upper_body`).
+`mat_<part_id>` (`sole_outsole`, `upper_heel_counter`, `trim`,
+`upper_body`).
 
 **Bug encontrado y corregido:** la primera integración quedó con el zapato
 desplazado fuera de cuadro (se veía cortado por el borde superior/izquierdo
@@ -129,9 +146,9 @@ lejos del origen. Se corrigió horneando la matriz de cada nodo
 (`node.getMatrix()`) en los vértices antes de centrar/escalar, y
 reseteando el nodo a identidad (T=0, R=identidad, S=1).
 
-**Estado de partes en v4:** 3 partes reales (Cuerpo, Talonera, Ribete) —
-todavía no hay Suela ni Puntera separadas en este corte (el usuario no las
-segmentó en Blender). Sin UVs → `image` sigue en `false` en las tres. La
+**Estado de partes en v4:** 4 partes reales (Cuerpo, Talonera, Ribete,
+Suela) — todavía no hay Puntera separada en este corte (el usuario no la
+segmentó en Blender). Sin UVs → `image` sigue en `false` en las cuatro. La
 vía de mejora es la misma que en v3: si el usuario segmenta más partes o
 agrega UVs en una futura edición, se agranda `shoe-parts.ts` sin tocar el
 resto del código.
@@ -166,16 +183,19 @@ verdad — esta tabla es solo para referencia rápida):
 | `upper_body`            | Cuerpo         | upper     | ✅    | ❌     | ✅               |
 | `upper_heel_counter`    | Talonera       | upper     | ✅    | ❌     | ✅               |
 | `trim`                  | Ribete         | accent    | ✅    | ❌     | ❌               |
+| `sole_outsole`          | Suela          | sole      | ✅    | ❌     | ❌               |
 
-`image` está en `false` en las tres porque el modelo activo no trae UVs
+`image` está en `false` en las cuatro porque el modelo activo no trae UVs
 (ver más abajo) — se reactiva parte por parte apenas el modelo lo soporte.
-Todavía no hay `sole_outsole` ni `upper_toe_cap` en este corte (existieron
-en la v3 por separación geométrica, ver historial arriba) porque el usuario
-no las separó como mallas propias en Blender. Si el modelo definitivo
-agrega partes nuevas (ésas, o `strap`/`applique`/`heel_taco` de la v2
-procedural), se agregan a esta tabla y a `shoe-parts.ts` — no requiere
-cambios en el visor ni en el estado, ambos iteran la lista dinámicamente
-(Fase 2/3).
+Todavía no hay `upper_toe_cap` en este corte (existió en la v3 por
+separación geométrica, ver historial arriba) porque el usuario no la
+separó como malla propia en Blender. `sole_outsole` es geométricamente un
+borde/tira delgada (no un disco cerrado) — su material va con
+`doubleSided: true` para que no se vuelva invisible de un lado (ver detalle
+más arriba). Si el modelo definitivo agrega partes nuevas (`upper_toe_cap`,
+o `strap`/`applique`/`heel_taco` de la v2 procedural), se agregan a esta
+tabla y a `shoe-parts.ts` — no requiere cambios en el visor ni en el
+estado, ambos iteran la lista dinámicamente (Fase 2/3).
 
 ### 3. Requisitos de UV
 
@@ -230,13 +250,22 @@ Para que el archivo definitivo funcione sin cambios de código:
   cae del lado correcto (el extremo más ancho/redondeado, no el angosto).
 - Para el modelo segmentado a mano (v4): `scripts/isolate-meshes.mjs` +
   capturas para distinguir mallas reales de sobrantes (ver arriba), y luego
-  QA en el visor real: click en cada parte (Cuerpo/Talonera/Ribete) para
-  confirmar que el contorno de selección cae sobre la región correcta, y
-  cambio de color en una parte para confirmar que no "salpica" a las
+  QA en el visor real: click en cada parte (Cuerpo/Talonera/Ribete/Suela)
+  para confirmar que el contorno de selección cae sobre la región correcta,
+  y cambio de color en una parte para confirmar que no "salpica" a las
   demás. Este mismo QA fue el que detectó el bug de traslación del nodo
   (el zapato aparecía cortado fuera de cuadro) descrito arriba — se
   confirmó comparando el bounding box combinado antes/después del fix con
   el mismo script de inspección de nodos usado para diagnosticarlo.
+- La mala clasificación inicial de `Mesh_0` (descartada como "sobrante"
+  cuando en realidad era la suela) se detectó porque el usuario la
+  reconoció directamente en el archivo original de Blender — no por QA
+  automático. Para verificarla antes de reintegrarla se armó un visor
+  three.js standalone fuera de la app (Playwright + `three.module.js` +
+  `GLTFLoader`/`OrbitControls` locales del propio `node_modules/three`,
+  sin depender de red externa) con vistas fijas top/bottom/front/side/iso,
+  que confirmó que su silueta desde abajo coincide exactamente con la
+  planta del zapato.
 
 ## Próximo paso (Fase 2)
 
