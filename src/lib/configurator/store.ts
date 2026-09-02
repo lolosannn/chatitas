@@ -26,7 +26,7 @@ export type PartsSelectionState = Record<string, PartSelection>;
  * lectura de forma.
  */
 const DEFAULT_COLOR_ID_BY_PART: Record<string, string> = {
-  sole_outsole: "black",
+  trim: "black",
 };
 
 function createDefaultSelection(part: ShoePartDefinition): PartSelection {

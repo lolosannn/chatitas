@@ -10,14 +10,14 @@
  * Esta misma convención es la que debe respetar el modelo definitivo que
  * haga el modelador 3D (ver docs/fase1-modelo-3d.md).
  *
- * Estado actual: el modelo activo (generado con IA + segmentado por
- * geometría, ver docs/fase1-modelo-3d.md) solo distingue 4 partes reales
- * (suela + 3 zonas del cuerpo por posición) y no trae UVs, así que por
- * ahora `image` está deshabilitado en todas — subir una imagen no tendría
- * dónde mapearse correctamente. Se reactiva cuando el modelo tenga UVs.
+ * Estado actual (v4): modelo generado con IA y segmentado a mano en
+ * Blender (separación real por selección de caras, no una heurística por
+ * posición). Trae 3 partes limpias: Cuerpo, Talonera y Ribete — todavía no
+ * hay Suela ni Puntera separadas en este corte, ni UVs (por eso `image`
+ * sigue en `false` en todas). Se agrandan apenas el modelo las traiga.
  */
 
-export type ShoePartCategory = "sole" | "upper";
+export type ShoePartCategory = "upper" | "accent";
 
 export interface ShoePartDefinition {
   /** Coincide con el sufijo del material en el glTF: `mat_<id>`. */
@@ -41,22 +41,16 @@ export const SHOE_PARTS: ShoePartDefinition[] = [
     supports: { color: true, image: false, material: true },
   },
   {
-    id: "upper_toe_cap",
-    label: "Puntera",
-    category: "upper",
-    supports: { color: true, image: false, material: true },
-  },
-  {
     id: "upper_heel_counter",
     label: "Talonera",
     category: "upper",
     supports: { color: true, image: false, material: true },
   },
   {
-    id: "sole_outsole",
-    label: "Suela",
-    category: "sole",
-    supports: { color: true, image: false, material: true },
+    id: "trim",
+    label: "Ribete",
+    category: "accent",
+    supports: { color: true, image: false, material: false },
   },
 ];
 

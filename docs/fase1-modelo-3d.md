@@ -89,12 +89,52 @@ modelado/segmentado a mano):
   parámetros (Smart Topology en vez de Alto detalle, más resolución de
   visión), no arreglando la malla — más fácil regenerar bien que reparar.
 
-La vía de mejora es reemplazar este archivo por uno con partes ya separadas
-(el mismo generador permite editar/dividir manualmente, o un modelador 3D
-hace el trabajo final) — en cuanto ese archivo tenga materiales
-`mat_<part_id>` propios y UVs, se reemplaza `public/models/shoe-placeholder.glb`
-y se **agranda de nuevo** la tabla de partes en `shoe-parts.ts`, sin tocar
-el resto del código.
+**Actualización — segmentación manual en Blender (v4, el activo hoy):** la
+separación geométrica por posición de la v3 se veía "desprolija" (bordes
+aproximados, no anatómicos). Se pidió al usuario segmentar a mano: abrió el
+`.glb` de la v3 en Blender y usó `Mesh → Separate → Selection` para partir
+el modelo en objetos/nodos distintos por selección real de caras, no por
+heurística de posición.
+
+El archivo resultante (`Untitled.glb`, ~13 MB, subido vía GitHub Release
+por el límite de 25 MB de la web de GitHub) tenía **5 mallas**, con
+bounding boxes fuertemente superpuestas entre sí — no se podía saber a
+simple vista cuáles eran partes reales y cuáles sobrantes. Se resolvió con
+una técnica de aislamiento: `scripts/isolate-meshes.mjs` exporta cada malla
+del archivo a su propio `.glb` (todos los demás nodos descartados +
+`prune()`), permitiendo renderizar y ver cada una por separado
+(`scripts/test-real-model-parts.mjs` + capturas). Eso reveló que 2 de las 5
+eran basura del proceso de edición (`Mesh_0`: líneas finas de contorno que
+trazan todas las costuras; `Mesh_0.001`: un fragmento suelto sin relación
+con el zapato) y las otras 3 eran partes limpias y bien separadas:
+talonera, ribete (la tira que rodea el escote) y cuerpo principal.
+`scripts/debug-color-parts.mjs` (un color plano distinto por malla) se usó
+como verificación cruzada antes de descartar las 2 sobrantes.
+
+`scripts/finalize-blender-model.mjs` integra el resultado: descarta las 2
+mallas sobrantes por índice, reorienta/centra/escala el conjunto a ~0.29 m
+de largo real, y le asigna a cada malla real su material
+`mat_<part_id>` (`upper_heel_counter`, `trim`, `upper_body`).
+
+**Bug encontrado y corregido:** la primera integración quedó con el zapato
+desplazado fuera de cuadro (se veía cortado por el borde superior/izquierdo
+del visor). La causa: cada nodo conservado del `.glb` de Blender traía su
+propia traslación (`T ≈ [0.009, 0.085, -0.002]`, igual en los 3 —
+heredada del pivote/origen del objeto en la escena original de Blender),
+que vive en el **nodo**, no en los vértices de la malla. El script solo
+reescribía el accessor `POSITION` (espacio local de la malla) sin tocar esa
+transformación del nodo, así que three.js la volvía a aplicar en el
+render, encima del recentrado — el resultado combinado tiraba el modelo
+lejos del origen. Se corrigió horneando la matriz de cada nodo
+(`node.getMatrix()`) en los vértices antes de centrar/escalar, y
+reseteando el nodo a identidad (T=0, R=identidad, S=1).
+
+**Estado de partes en v4:** 3 partes reales (Cuerpo, Talonera, Ribete) —
+todavía no hay Suela ni Puntera separadas en este corte (el usuario no las
+segmentó en Blender). Sin UVs → `image` sigue en `false` en las tres. La
+vía de mejora es la misma que en v3: si el usuario segmenta más partes o
+agrega UVs en una futura edición, se agranda `shoe-parts.ts` sin tocar el
+resto del código.
 
 ## Convención de nomenclatura (obligatoria para el modelo definitivo)
 
@@ -116,7 +156,7 @@ Los nombres de los **nodos/mallas** en sí no importan para la lógica (pueden
 llamarse como el modelador prefiera); lo que el código lee es el nombre del
 **material**.
 
-### 2. Tabla de partes configurables (actual — v3, modelo real segmentado)
+### 2. Tabla de partes configurables (actual — v4, segmentado a mano en Blender)
 
 Definida en código en `src/lib/configurator/shoe-parts.ts` (fuente de
 verdad — esta tabla es solo para referencia rápida):
@@ -124,16 +164,18 @@ verdad — esta tabla es solo para referencia rápida):
 | `part_id`             | Nombre visible | Categoría | Color | Imagen | Material físico |
 |------------------------|----------------|-----------|:-----:|:------:|:----------------:|
 | `upper_body`            | Cuerpo         | upper     | ✅    | ❌     | ✅               |
-| `upper_toe_cap`         | Puntera        | upper     | ✅    | ❌     | ✅               |
 | `upper_heel_counter`    | Talonera       | upper     | ✅    | ❌     | ✅               |
-| `sole_outsole`          | Suela          | sole      | ✅    | ❌     | ✅               |
+| `trim`                  | Ribete         | accent    | ✅    | ❌     | ❌               |
 
-`image` está en `false` en las cuatro porque el modelo activo no trae UVs
+`image` está en `false` en las tres porque el modelo activo no trae UVs
 (ver más abajo) — se reactiva parte por parte apenas el modelo lo soporte.
-Si el modelo definitivo necesita partes nuevas (ej. `trim`, `strap`,
-`applique`, `heel_taco` — existieron en la v2 procedural, ver historial más
-abajo), se agregan a esta tabla y a `shoe-parts.ts` — no requiere cambios
-en el visor ni en el estado, ambos iteran la lista dinámicamente (Fase 2/3).
+Todavía no hay `sole_outsole` ni `upper_toe_cap` en este corte (existieron
+en la v3 por separación geométrica, ver historial arriba) porque el usuario
+no las separó como mallas propias en Blender. Si el modelo definitivo
+agrega partes nuevas (ésas, o `strap`/`applique`/`heel_taco` de la v2
+procedural), se agregan a esta tabla y a `shoe-parts.ts` — no requiere
+cambios en el visor ni en el estado, ambos iteran la lista dinámicamente
+(Fase 2/3).
 
 ### 3. Requisitos de UV
 
@@ -186,6 +228,15 @@ Para que el archivo definitivo funcione sin cambios de código:
   clickeando cada zona en el visor real y aplicando un color distinto por
   parte (`scripts/test-real-model-parts.mjs`) para confirmar que "Puntera"
   cae del lado correcto (el extremo más ancho/redondeado, no el angosto).
+- Para el modelo segmentado a mano (v4): `scripts/isolate-meshes.mjs` +
+  capturas para distinguir mallas reales de sobrantes (ver arriba), y luego
+  QA en el visor real: click en cada parte (Cuerpo/Talonera/Ribete) para
+  confirmar que el contorno de selección cae sobre la región correcta, y
+  cambio de color en una parte para confirmar que no "salpica" a las
+  demás. Este mismo QA fue el que detectó el bug de traslación del nodo
+  (el zapato aparecía cortado fuera de cuadro) descrito arriba — se
+  confirmó comparando el bounding box combinado antes/después del fix con
+  el mismo script de inspección de nodos usado para diagnosticarlo.
 
 ## Próximo paso (Fase 2)
 
