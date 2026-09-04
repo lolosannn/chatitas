@@ -153,6 +153,56 @@ vía de mejora es la misma que en v3: si el usuario segmenta más partes o
 agrega UVs en una futura edición, se agranda `shoe-parts.ts` sin tocar el
 resto del código.
 
+**Actualización — modelo re-exportado con objetos ya nombrados (v5, el
+activo hoy):** para la siguiente vuelta, en vez de pedirle al usuario que
+edite el modelo v3 (auto-segmentado, feo) desde cero, se le pidió
+directamente **nombrar cada objeto** en Blender antes de exportar
+(`cuerpo`, `Ribete`, `Suela`, `Talonera`). El archivo resultante
+(`zapatoooo.glb`, ~30 MB, subido al mismo release de GitHub) tenía **4
+nodos, los 4 con nombre y sin ningún sobrante** — cero mallas basura que
+aislar y adivinar, y sin el bug de traslación heredada del nodo (esta vez
+los 4 nodos tenían T=[0,0,0] limpio).
+
+Se armó `scripts/finalize-named-model.mjs`, una versión del integrador que
+mapea **nombre de nodo → part_id** (normalizado a minúsculas/sin acentos)
+en vez de por índice — mucho más robusto que adivinar por posición en la
+lista, y ya no depende de que el orden de export coincida con lo esperado.
+Mismo tratamiento que v4 en lo demás: hornea la matriz de cada nodo en los
+vértices, recentra/escala a ~0.29 m, asigna `mat_<part_id>` por malla, y
+marca `sole_outsole` como `doubleSided`.
+
+**Bug nuevo encontrado y corregido — decimación no reducía nada:** este
+archivo venía muchísimo más pesado (~513k triángulos combinados, contra
+~260-400k de los anteriores) y con una relación vértices/triángulos de
+casi 2:1 — normal cuando el export trae **normales por-cara** (cada
+vértice único por su normal, no solo por posición; común en re-exports
+donde se pierde el smoothing original). `weld()` (que en esta versión de
+`@gltf-transform/functions` solo fusiona vértices **bitwise idénticos**,
+sin usar `tolerance` para nada — se comprobó forzando tolerancias mucho
+más grandes sin ningún cambio) no encontraba duplicados porque la normal
+distinta ya alcanza para que dos vértices con la misma posición cuenten
+como distintos. Con eso, `simplify()` (MeshoptSimplifier) trata cada uno
+de esos bordes como una costura de atributo y se niega a colapsarlos —
+por más que se le pida un `ratio` bajo o un `error` alto, la reducción real
+quedaba en ~2-4%.
+
+Se corrigió borrando el atributo `NORMAL` de cada primitiva **antes** de
+`weld()`+`simplify()` (ahora el weld sí fusiona por posición: de 591k a
+152k vértices solo en el cuerpo) y recalculando normales suaves **a mano**
+después de decimar (acumulando la normal de cada cara, ponderada por su
+área/producto cruz sin normalizar, en cada vértice que la comparte, y
+normalizando al final — ver `computeSmoothNormals()` en
+`scripts/simplify-real-model.mjs`). Se probó primero el helper `normals()`
+de `@gltf-transform/functions`, pero en mallas de este tamaño vaciaba los
+índices de la primitiva (quedaba con 0 triángulos) — se descartó por ese
+bug y se optó por la cuenta manual. Resultado: ~513k → ~51k triángulos
+totales (1 MB), con sombreado suave correcto (mejor incluso que las
+versiones anteriores, que habían quedado con un aspecto algo facetado).
+
+**Estado de partes en v5:** mismas 4 partes que v4 (Cuerpo, Talonera,
+Ribete, Suela), esta vez sin necesidad de descartar ninguna malla —
+integración limpia de punta a punta. Sigue sin haber Puntera ni UVs.
+
 ## Convención de nomenclatura (obligatoria para el modelo definitivo)
 
 ### 1. Un material por zona configurable, compartido entre mallas
@@ -266,6 +316,15 @@ Para que el archivo definitivo funcione sin cambios de código:
   sin depender de red externa) con vistas fijas top/bottom/front/side/iso,
   que confirmó que su silueta desde abajo coincide exactamente con la
   planta del zapato.
+- Para el modelo con nodos ya nombrados (v5): mismo QA en el visor real
+  (click por parte + outline + cambio de color) que en v4. El hallazgo de
+  esta vuelta no fue de segmentación sino de rendimiento de la
+  decimación — se detectó comparando el conteo de triángulos/vértices por
+  primitiva antes/después de cada paso del pipeline (weld → simplify →
+  normals) con inspección directa vía `@gltf-transform/core`, lo que
+  aisló que `weld()` no fusionaba ningún vértice pese a tolerancias cada
+  vez más grandes, y que el helper `normals()` vaciaba los índices — ver
+  el bug documentado arriba.
 
 ## Próximo paso (Fase 2)
 
