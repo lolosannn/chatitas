@@ -19,21 +19,9 @@ export interface PartSelection {
 
 export type PartsSelectionState = Record<string, PartSelection>;
 
-/**
- * Color por defecto para partes que no deberían arrancar en el blanco
- * genérico (suela y herrajes) — sin esto, el primer render del visor
- * (Fase 3) pinta todas las partes del mismo blanco y el zapato pierde toda
- * lectura de forma.
- */
-const DEFAULT_COLOR_ID_BY_PART: Record<string, string> = {
-  trim: "black",
-  sole_outsole: "black",
-};
-
 function createDefaultSelection(part: ShoePartDefinition): PartSelection {
-  const colorId = DEFAULT_COLOR_ID_BY_PART[part.id] ?? DEFAULT_COLOR_ID;
   return {
-    colorHex: getColorSwatch(colorId)?.hex ?? "#ffffff",
+    colorHex: getColorSwatch(DEFAULT_COLOR_ID)?.hex ?? "#9a9a9a",
     materialVariantId: part.supports.material ? DEFAULT_MATERIAL_VARIANT_ID : null,
     image: null,
   };

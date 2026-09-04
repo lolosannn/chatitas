@@ -10,6 +10,7 @@ export interface ColorSwatch {
  */
 export const COLOR_PALETTE: ColorSwatch[] = [
   { id: "white", label: "Blanco", hex: "#f5f5f5" },
+  { id: "gray", label: "Gris", hex: "#9a9a9a" },
   { id: "black", label: "Negro", hex: "#111111" },
   { id: "stone", label: "Piedra", hex: "#c9c2b4" },
   { id: "cream", label: "Crema", hex: "#efe6d8" },
@@ -27,7 +28,7 @@ export const COLOR_PALETTE: ColorSwatch[] = [
   { id: "silver", label: "Plata", hex: "#b0b0b0" },
 ];
 
-export const DEFAULT_COLOR_ID = "white";
+export const DEFAULT_COLOR_ID = "gray";
 
 export function getColorSwatch(id: string): ColorSwatch | undefined {
   return COLOR_PALETTE.find((c) => c.id === id);
